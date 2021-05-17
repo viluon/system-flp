@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ac8d7f1faa650bc3578e30c59eaf1604d87291c3c724e796e8ab4a6a8d269540
+-- hash: 4a14b2893e9b42b0c30e4e2ffc073faffdb2772daeb429940b3402978fd67704
 
 name:           system-flp
 version:        0.1.0.0
@@ -28,12 +28,18 @@ source-repository head
 library
   exposed-modules:
       Lib
+      Syntax.AST
+      Parser.Lexer
+      Parser.Parser
+      Parser.Token
+      Parser.Utils
   other-modules:
       Paths_system_flp
   hs-source-dirs:
       src
   build-depends:
       base >=4.7 && <5
+    , containers >=0.6.2.1
   default-language: Haskell2010
 
 executable system-flp-exe
