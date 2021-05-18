@@ -1,6 +1,7 @@
 module Syntax.AST (
   Type(..)
-, Term(..)
+, TermInfer(..)
+, TermCheck(..)
 , Name
 , Kind
 ) where
@@ -15,13 +16,17 @@ data Type
   | TyForall Name Type -- of kind * -> *
   deriving (Eq, Show)
 
-data Term
-  = TermAnn   Term Type -- type annotation (x :: τ)
-  | TermFree  Name      -- unbound (global) variable
-  | TermBound Int  Name -- bound variable
-  | TermApp   Term Term -- application (f x)
-  | TermLam   Name Term -- regular lambda (λ x. e)
-  | TermTyLam Name Term -- type lambda (Λ τ. e)
-  | TermTyApp Term Type -- type application (f[τ])
+data TermInfer
+  = TermAnn   TermCheck Type      -- type annotation (x :: τ)
+  | TermFree  Name                -- unbound (global) variable
+  | TermBound Int       Name      -- bound variable
+  | TermApp   TermInfer TermCheck -- application (f x)
+  | TermTyLam Name      TermInfer -- type lambda (Λ τ. e)
+  | TermTyApp TermInfer Type      -- type application (f[τ])
+  deriving (Eq, Show)
+
+data TermCheck
+  = TermCheckLam Name TermCheck -- regular lambda (λ x. e)
+  | TermCheckInf TermInfer      -- typecheck an inferrable term
   deriving (Eq, Show)
 

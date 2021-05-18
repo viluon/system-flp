@@ -9,8 +9,8 @@ type Env = [Value]
 
 data Value
   = Free  Name
-  | Lam   Name Term Env
+  | Lam   Name TermCheck Env
   | App   Value Value
-  | TyLam Name Term Env
-  | TyApp Value Value
+  | TyLam Name TermCheck Env
+  | TyApp Value Type
   deriving (Eq, Show)

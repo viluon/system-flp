@@ -1,28 +1,49 @@
-{-# OPTIONS_GHC -Wall #-}
-
 module Eval (
-  eval
+  evalInfer
+, evalCheck
 ) where
 
 import Syntax.AST
 import qualified Value as Val
 
-eval :: Val.Env -> Term -> Val.Value
-eval env (TermAnn     e    _)    = eval env e
-eval _   (TermFree    name)      = Val.Free name
-eval env (TermBound   n    name) = env !! n
-eval env (TermApp     e1   e2)   = valueApp (eval env e1) (eval env e2)
-eval env (TermLam     name e)    = Val.Lam name e env
-eval env (TermTyLam   name e)    = undefined
-eval env (TermTyApp   e    tp)   = undefined
+(!!?) :: [a] -> Int -> Maybe a
+xs !!? n | n >= 0 && n < length xs = Just $ xs !! n
+_  !!? _ = Nothing
+
+evalInfer :: Val.Env -> TermInfer -> Val.Value
+evalInfer env (TermAnn     e    _)    = evalCheck env e
+evalInfer _   (TermFree    name)      = Val.Free name
+evalInfer env (TermBound   n    name) = case env !!? n of
+                                        Just x  -> x
+                                        Nothing -> error $ "undefined reference to " ++ name
+evalInfer env (TermApp     e1   e2)   = valueApp (evalInfer env e1) (evalCheck env e2)
+evalInfer env (TermTyLam   name e)    = Val.TyLam name (TermCheckInf e) env
+evalInfer env (TermTyApp   e    tp)   = typeApp (evalInfer env e) tp
+
+evalCheck :: Val.Env -> TermCheck -> Val.Value
+evalCheck env (TermCheckInf t)      = evalInfer env t
+evalCheck env (TermCheckLam name e) = Val.Lam name e env
 
 valueApp :: Val.Value -> Val.Value -> Val.Value
-valueApp (Val.Lam _ body env) arg = eval (arg : env) body
+valueApp (Val.Lam _ body env) arg = evalCheck (arg : env) body
 valueApp a b                      = Val.App a b
 
+typeApp :: Val.Value -> Type -> Val.Value
+typeApp (Val.TyLam _ body env) arg = evalCheck env body
+typeApp a b                        = Val.TyApp a b
 
-foo :: Val.Value
-foo = eval [] (TermApp (TermLam "x" (TermBound 0 "x")) (TermFree "foo"))
+
+{-
+(τ -> τ) -> (τ -> τ)
+
+(λ x. x) :: forall τ. τ -> τ
+
+(λ y. y :: τ -> τ) (f :: τ)
+--> type error: τ ≠ (τ -> τ)
+-}
+
+-- >>> bar
+-- Free "f"
 
 -- >>> foo
 -- Free "foo"
