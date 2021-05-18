@@ -23,6 +23,7 @@ $space  = [\ \t\f\v]
 
 token :-
 
+<0>         quit            { plainTok Quit }
 <0>         assume          { plainTok Assume }
 
 <0>         "λ"             { plainTok Lambda }
@@ -40,6 +41,7 @@ token :-
 <0>         "["             { plainTok LeftBracket }
 <0>         "]"             { plainTok RightBracket }
 <0>         "::"            { plainTok DoubleColon }
+<0>         ":"             { plainTok Colon }
 <0>         "*"             { plainTok Star }
 <0>         "->"            { plainTok Arrow }
 <0>         "forall"        { plainTok Forall }
@@ -82,11 +84,11 @@ readToken = do
 
     AlexError inp' ->
       error $ "Lexical error on line " ++ (show $ ai'line'number inp')
-    
+
     AlexSkip inp' _ -> do
       put s{ input = inp' }
       readToken
-    
+
     AlexToken inp' n act -> do
       let (AlexInput{ ai'rest = buf }) = input s -- TODO: rename airest
       put s{ input = inp' }

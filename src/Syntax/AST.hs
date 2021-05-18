@@ -2,13 +2,13 @@ module Syntax.AST (
   Type(..)
 , TermInfer(..)
 , TermCheck(..)
+, Kind(..)
 , Name
-, Kind
 ) where
 
 type Name = String
 
-data Kind
+data Kind = Star
 
 data Type
   = TyFree   Name      -- of kind *

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4a14b2893e9b42b0c30e4e2ffc073faffdb2772daeb429940b3402978fd67704
+-- hash: 371fa836df5b1af78b9c833727896d498e40b4b88595ec36badcb275ebf3cf4b
 
 name:           system-flp
 version:        0.1.0.0
@@ -27,20 +27,27 @@ source-repository head
 
 library
   exposed-modules:
+      Context
+      Eval
       Interpreter
-      Syntax.AST
       Parser.Lexer
       Parser.Parser
       Parser.Token
       Parser.Utils
+      Syntax.AST
+      Syntax.Command
+      Typechecking
+      Value
   other-modules:
       Paths_system_flp
   hs-source-dirs:
       src
   ghc-options: -Wall
   build-depends:
-      base >=4.7 && <5
+      array
+    , base >=4.7 && <5
     , containers >=0.6.2.1
+    , hspec
     , mtl
     , utf8-string
   default-language: Haskell2010
@@ -53,8 +60,13 @@ executable system-flp-exe
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      array
+    , base >=4.7 && <5
+    , containers >=0.6.2.1
+    , hspec
+    , mtl
     , system-flp
+    , utf8-string
   default-language: Haskell2010
 
 test-suite system-flp-test
@@ -66,6 +78,11 @@ test-suite system-flp-test
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      array
+    , base >=4.7 && <5
+    , containers >=0.6.2.1
+    , hspec
+    , mtl
     , system-flp
+    , utf8-string
   default-language: Haskell2010

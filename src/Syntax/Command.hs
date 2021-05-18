@@ -2,4 +2,6 @@ module Syntax.Command (
   Command(..)
 ) where
 
-data Command = Quit
+import Context
+
+data Command = Quit | Assume Context

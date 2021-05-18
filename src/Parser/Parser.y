@@ -1,5 +1,5 @@
 {
-module Parser.Parser (parse'expr) where
+module Parser.Parser (parseExpr) where
 
 import Data.List (elemIndex)
 
@@ -10,12 +10,9 @@ import qualified Parser.Token as Tok
 import Parser.Lexer
 import Parser.Utils
 
-import Command
-import AST
-import Name
+import Syntax.Command
+import Syntax.AST
 import Context
-import Kind
-import Type
 }
 
 
@@ -28,11 +25,13 @@ import Type
 
 
 %token
+  quit          { Tok.Quit }
   assume        { Tok.Assume }
   var           { Tok.Identifier $$ }
   lambda        { Tok.Lambda }
   typelambda    { Tok.TyLam }
   '::'          { Tok.DoubleColon }
+  ':'           { Tok.Colon }
   '('           { Tok.LeftParen }
   ')'           { Tok.RightParen }
   '['           { Tok.LeftBracket }
@@ -44,7 +43,7 @@ import Type
 
 
 %%
-Program         ::  { Either Command Term'Check }
+Program         ::  { Either Command TermCheck }
                 :   TermCheck                                       { Right $1 }
                 |   Command                                         { Left $1 }
 
@@ -56,86 +55,95 @@ TypedParams     ::  { [(String, Type)] }
 TypedParam      ::  { (String, Type) }
                 :   '(' var '::' Type ')'                           { ($2, $4) }
 
+either(a, b)
+                : a                                                 { Left  $1 }
+                | b                                                 { Right $1 }
 
-TermInfer       ::  { Term'Infer }
-                :   var                                             { Free $ Global $1 }
+AppType         :: { Type }
+                :   '[' Type ']'                                    { $2 }
+
+TermInfer       ::  { TermInfer }
+                :   var                                             { TermFree $1 }
 --                |   '(' TermInfer TermCheck ')'                     { $2 :@: $3 }
-                |   AppLeft OneOrMany(AppRight)                     { foldl
+                |   AppLeft OneOrMany(either(AppType, AppRight))    { foldl
                                                                         (\ l r -> case r of
-                                                                          { Inf (Type t) -> l :$: Type t
-                                                                          ; term -> l :@: term })
+                                                                          { Left  t    -> TermTyApp l t
+                                                                          ; Right term -> TermApp l term })
                                                                         $1 $2 }
-                |   '(' TermCheck '::' Type ')'                     { $2 ::: $4 }
-                |   TermCheck '::' Type                             { $1 ::: $3 }
+                |   '(' TermCheck '::' Type ')'                     { TermAnn $2 $4 }
+                |   TermCheck '::' Type                             { TermAnn $1 $3 }
                 -- NOTE: adding parens around removes some conflicts
                 -- |   '(' lambda TypedParams '->' TermInfer ')'       { fix $ foldr
                 --                                                         (\ (par, type') body -> LamAnn par type' body)
                 --                                                         $5
                 --                                                         $3 }
-                |   '(' typelambda var '.' TermInfer ')'            { TyLam $3 $5 }
+                |   '(' typelambda var '.' TermInfer ')'            { TermTyLam $3 $5 }
                 |   '(' TermInfer ')' {- %shift -}                  { $2 }
 
 
-AppLeft         ::  { Term'Infer }
-                :   var                                             { Free $ Global $1 }
-                |   TermCheck '::' Type                             { $1 ::: $3 }
-                |   '(' TermCheck '::' Type ')'                     { $2 ::: $4 }
+AppLeft         ::  { TermInfer }
+                :   var                                             { TermFree $1 }
+                |   TermCheck '::' Type                             { TermAnn $1 $3 }
+                |   '(' TermCheck '::' Type ')'                     { TermAnn $2 $4 }
 
                 -- |   '(' lambda TypedParams '->' TermInfer ')'       { fix $ foldr
                 --                                                         (\ (par, type') body -> LamAnn par type' body)
                 --                                                         $5
                 --                                                         $3 }
                 |   '(' TermInfer ')' {- %shift -}                  { $2 }
-                |   '(' typelambda var '.' TermInfer ')'            { TyLam $3 $5 }
+                |   '(' typelambda var '.' TermInfer ')'            { TermTyLam $3 $5 }
 
 
-AppRight        ::  { Term'Check }
-                :   var                                             { Inf $ Free $ Global $1 }
-                |   '(' TermCheck '::' Type ')'                     { Inf $ $2 ::: $4 }
+AppRight        ::  { TermCheck }
+                :   var                                             { TermCheckInf $ TermFree $1 }
+                |   '(' TermCheck '::' Type ')'                     { TermCheckInf $ TermAnn $2 $4 }
                 -- NOTE: adding parens around removes 9 r/r conflict
-                -- |   '(' lambda TypedParams '->' TermInfer ')'       { Inf $ fix $ foldr
+                -- |   '(' lambda TypedParams '->' TermInfer ')'       { TermCheckInf $ fix $ foldr
                 --                                                         (\ (par, type') body -> LamAnn par type' body)
                 --                                                         $5
                 --                                                         $3 }
-                |   '(' TermInfer ')' {- %shift -}                  { Inf $ $2 }
+                |   '(' TermInfer ')' {- %shift -}                  { TermCheckInf $2 }
                 |   '(' lambda Params '->' TermCheck ')'            { fix $ foldr
-                                                                        (\ arg body -> Lam arg body)
+                                                                        (\ arg body -> TermCheckLam arg body)
                                                                         $5
                                                                         $3 }
                 |   '(' TermCheck ')'                               { $2 }
-                |   '[' Type ']'                                    { Inf $ Type $2 }
 
 
 Params          ::  { [String] }
                 :   OneOrMany(var)                                  { $1 }
 
 
-TermCheck       ::  { Term'Check }
-                :   TermInfer                                       { Inf $1 }
+TermCheck       ::  { TermCheck }
+                :   TermInfer                                       { TermCheckInf $1 }
                 |   '(' lambda Params '->' TermCheck ')'            { fix $ foldr
-                                                                        (\ arg body -> Lam arg body)
+                                                                        (\ arg body -> TermCheckLam arg body)
                                                                         $5
                                                                         $3 }
                 |   '(' TermCheck ')'                               { $2 }
 
 
 Type            ::  { Type }
-                :   var                                             { TFree $ Global $1 }
-                |   var '->' Type                                   { TFree (Global $1) :-> $3 }
-                |   forall var '.' Type                             { Forall $2 $4 }
-                |   '(' Type ')' '->' Type                          { $2 :-> $5 }
+                :   var                                             { TyFree  $1 }
+                |   var '->' Type                                   { TyFun (TyFree $1) $3 }
+                |   forall var '.' Type                             { TyForall $2 $4 }
+                |   '(' Type ')' '->' Type                          { TyFun $2 $5 }
                 |   '(' Type ')'                                    { $2 }
 
 
 Command         ::  { Command }
-                :   assume var '::' '*'                             { Assume [ (Global $2, HasKind Star) ] }
-                |   assume var '::' Type                            { Assume [ (Global $2, HasType $4) ] }
+                : ':' CommandName                                   { $2 }
+
+CommandName     ::  { Command }
+                :   quit                                            { Quit }
+                |   assume var '::' '*'                             { Assume [ ($2, HasKind Star) ] }
+                |   assume var '::' Type                            { Assume [ ($2, HasType $4) ] }
                 |   assume OneOrMany(AssumeWrapped)                 { Assume $2 }
 
 
 AssumeWrapped   ::  { (Name, Info) }
-                :   '(' var '::' '*' ')'                            { (Global $2, HasKind Star) }
-                |   '(' var '::' Type ')'                           { (Global $2, HasType $4) }
+                :   '(' var '::' '*' ')'                            { ($2, HasKind Star) }
+                |   '(' var '::' Type ')'                           { ($2, HasType $4) }
 
 
 
@@ -153,44 +161,44 @@ class Fix a where
   fix :: a -> a
 
 
-instance Fix Term'Check where
-  fix lambda = fix'check lambda []
+instance Fix TermCheck where
+  fix lambda = fixCheck lambda []
 
 
-instance Fix Term'Infer where
-  fix lambda = fix'infer lambda []
+instance Fix TermInfer where
+  fix lambda = fixInfer lambda []
 
 
-fix'check :: Term'Check -> [String] -> Term'Check
-fix'check (Lam par body) context
-  = Lam par $ fix'check body (par : context)
-fix'check (Inf term) context
-  = Inf $ fix'infer term context
+fixCheck :: TermCheck -> [String] -> TermCheck
+fixCheck (TermCheckLam par body) context
+  = TermCheckLam par $ fixCheck body (par : context)
+fixCheck (TermCheckInf term) context
+  = TermCheckInf $ fixInfer term context
 
 
-fix'infer :: Term'Infer -> [String] -> Term'Infer
-fix'infer (term ::: type') context
-  = (fix'check term context) ::: type'
-fix'infer (Bound i n) _
-  = Bound i n
-fix'infer (Free (Global name)) context
+fixInfer :: TermInfer -> [String] -> TermInfer
+fixInfer (TermAnn term type') context
+  = TermAnn (fixCheck term context) type'
+fixInfer (TermBound i n) _
+  = TermBound i n
+fixInfer (TermFree name) context
   = case elemIndex name context of
-      Just ind -> Bound ind name
-      Nothing -> Free (Global name)
-fix'infer (left :@: right) context
-  = (fix'infer left context) :@: (fix'check right context)
--- fix'infer (LamAnn par type' body) context
---   = LamAnn par type' $ fix'infer body (par : context)
+      Just ind -> TermBound ind name
+      Nothing -> TermFree name
+fixInfer (TermApp left right) context
+  = TermApp (fixInfer left context) (fixCheck right context)
+-- fixInfer (LamAnn par type' body) context
+--   = LamAnn par type' $ fixInfer body (par : context)
 
 
 parseError _ = do
-  lno <- getLineNo
+  lno   <- getLineNo
   colno <- getColNo
-  s <- get
+  s     <- get
   error $ "Parse error on line " ++ show lno ++ ", column " ++ show colno ++ "." ++ "\n" ++ (show s)
 
 
-parse'expr :: String -> Either Command Term'Check
-parse'expr s =
+parseExpr :: String -> Either Command TermCheck
+parseExpr s =
   evalP parserAct s
 }

@@ -1,10 +1,10 @@
 module Parser.Token where
 
-
 data Token
   = Identifier String
   | Lambda
   | TyLam -- NEW
+  | Colon
   | DoubleColon
   | LeftParen
   | RightParen
@@ -15,6 +15,7 @@ data Token
   | Forall -- NEW
   | Dot -- NEW
 
+  | Quit
   | Assume
 
   | EOF
