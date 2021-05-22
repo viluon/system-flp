@@ -44,8 +44,7 @@ import Context
 
 %%
 Program         ::  { Either Command TermCheck }
-                :   TermCheck                                       { Right $1 }
-                |   Command                                         { Left $1 }
+                :   Either(Command, TermCheck)                      { $1 }
 
 
 TypedParams     ::  { [(String, Type)] }
@@ -55,7 +54,7 @@ TypedParams     ::  { [(String, Type)] }
 TypedParam      ::  { (String, Type) }
                 :   '(' var '::' Type ')'                           { ($2, $4) }
 
-either(a, b)
+Either(a, b)    :: { Either a b }
                 : a                                                 { Left  $1 }
                 | b                                                 { Right $1 }
 
@@ -65,7 +64,7 @@ AppType         :: { Type }
 TermInfer       ::  { TermInfer }
                 :   var                                             { TermFree $1 }
 --                |   '(' TermInfer TermCheck ')'                     { $2 :@: $3 }
-                |   AppLeft OneOrMany(either(AppType, AppRight))    { foldl
+                |   AppLeft OneOrMany(Either(AppType, AppRight))    { foldl
                                                                         (\ l r -> case r of
                                                                           { Left  t    -> TermTyApp l t
                                                                           ; Right term -> TermApp l term })
@@ -73,7 +72,7 @@ TermInfer       ::  { TermInfer }
                 |   '(' TermCheck '::' Type ')'                     { TermAnn $2 $4 }
                 |   TermCheck '::' Type                             { TermAnn $1 $3 }
                 -- NOTE: adding parens around removes some conflicts
-                -- |   '(' lambda TypedParams '->' TermInfer ')'       { fix $ foldr
+                --|   '(' lambda Params '->' TermInfer ')'       { fix $ foldr
                 --                                                         (\ (par, type') body -> LamAnn par type' body)
                 --                                                         $5
                 --                                                         $3 }
@@ -132,9 +131,9 @@ Type            ::  { Type }
 
 
 Command         ::  { Command }
-                : ':' CommandName                                   { $2 }
+                : ':' ActualCommand                                   { $2 }
 
-CommandName     ::  { Command }
+ActualCommand   ::  { Command }
                 :   quit                                            { Quit }
                 |   assume var '::' '*'                             { Assume [ ($2, HasKind Star) ] }
                 |   assume var '::' Type                            { Assume [ ($2, HasType $4) ] }

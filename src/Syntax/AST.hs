@@ -26,7 +26,7 @@ data TermInfer
   deriving (Eq, Show)
 
 data TermCheck
-  = TermCheckLam Name TermCheck -- regular lambda (λ x. e)
-  | TermCheckInf TermInfer      -- typecheck an inferrable term
+  = TermCheckLam Name TermCheck   -- regular lambda (λ x. e)
+  | TermCheckInf TermInfer        -- typecheck an inferrable term
   deriving (Eq, Show)
 

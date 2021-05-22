@@ -17,7 +17,7 @@ evalInfer env (TermBound   n    name) = case env !!? n of
                                         Just x  -> x
                                         Nothing -> error $ "undefined reference to " ++ name
 evalInfer env (TermApp     e1   e2)   = valueApp (evalInfer env e1) (evalCheck env e2)
-evalInfer env (TermTyLam   name e)    = Val.TyLam name (TermCheckInf e) env
+evalInfer env (TermTyLam   name e)    = Val.TyLam name e env 
 evalInfer env (TermTyApp   e    tp)   = typeApp (evalInfer env e) tp
 
 evalCheck :: Val.Env -> TermCheck -> Val.Value
@@ -29,7 +29,7 @@ valueApp (Val.Lam _ body env) arg = evalCheck (arg : env) body
 valueApp a b                      = Val.App a b
 
 typeApp :: Val.Value -> Type -> Val.Value
-typeApp (Val.TyLam _ body env) arg = evalCheck env body
+typeApp (Val.TyLam _ body env) arg = evalCheck env (TermCheckInf body)
 typeApp a b                        = Val.TyApp a b
 
 
