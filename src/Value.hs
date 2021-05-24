@@ -9,6 +9,7 @@ type Env = [Value]
 
 data Value
   = Free  Name
+  | Nat   Int
   | Lam   Name TermCheck Env
   | App   Value Value
   | TyLam Name TermInfer Env

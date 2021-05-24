@@ -2,6 +2,8 @@ module Parser.Token where
 
 data Token
   = Identifier String
+  | NatLiteral Int
+
   | Lambda
   | TyLam -- NEW
   | Colon

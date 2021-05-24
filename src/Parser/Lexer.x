@@ -8,8 +8,9 @@ import  Parser.Token
 }
 
 
-$lower  = [a-z]
-$upper  = [A-Z]
+$lower = [a-z]
+$upper = [A-Z]
+$digit = [0-9]
 
 
 @variableident      = [$lower $upper]+
@@ -34,6 +35,7 @@ token :-
 <0>         "/\"            { plainTok TyLam }
 <0>         "/"             { plainTok TyLam }
 
+<0>         $digit+         { parametrizedTok NatLiteral (parseNum 10) }
 
 -- special symbols
 <0>         "("             { plainTok LeftParen }
@@ -74,6 +76,8 @@ parametrizedTok tc read' _ matched = do
   let token = tc (read' matched)
   return $ Just token
 
+parseNum :: Int -> String -> Int
+parseNum b = foldl (\acc x -> acc * b + read [x]) 0
 
 readToken :: P Token
 readToken = do

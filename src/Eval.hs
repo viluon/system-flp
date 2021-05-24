@@ -12,12 +12,13 @@ _  !!? _ = Nothing
 
 evalInfer :: Val.Env -> TermInfer -> Val.Value
 evalInfer env (TermAnn     e    _)    = evalCheck env e
+evalInfer _   (TermNat     n)         = Val.Nat n
 evalInfer _   (TermFree    name)      = Val.Free name
 evalInfer env (TermBound   n    name) = case env !!? n of
                                         Just x  -> x
                                         Nothing -> error $ "undefined reference to " ++ name
 evalInfer env (TermApp     e1   e2)   = valueApp (evalInfer env e1) (evalCheck env e2)
-evalInfer env (TermTyLam   name e)    = Val.TyLam name e env 
+evalInfer env (TermTyLam   name e)    = Val.TyLam name e env
 evalInfer env (TermTyApp   e    tp)   = typeApp (evalInfer env e) tp
 
 evalCheck :: Val.Env -> TermCheck -> Val.Value

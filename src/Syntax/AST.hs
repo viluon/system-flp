@@ -12,12 +12,14 @@ data Kind = Star
 
 data Type
   = TyFree   Name      -- of kind *
+  | TyNat              -- of kind *
   | TyFun    Type Type -- of kind *
   | TyForall Name Type -- of kind * -> *
   deriving (Eq, Show)
 
 data TermInfer
   = TermAnn   TermCheck Type      -- type annotation (x :: τ)
+  | TermNat   Int                 -- natural number literal (42)
   | TermFree  Name                -- unbound (global) variable
   | TermBound Int       Name      -- bound variable
   | TermApp   TermInfer TermCheck -- application (f x)

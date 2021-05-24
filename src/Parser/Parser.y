@@ -28,6 +28,7 @@ import Context
   quit          { Tok.Quit }
   assume        { Tok.Assume }
   var           { Tok.Identifier $$ }
+  nat           { Tok.NatLiteral $$ }
   lambda        { Tok.Lambda }
   typelambda    { Tok.TyLam }
   '::'          { Tok.DoubleColon }
@@ -63,6 +64,7 @@ AppType         :: { Type }
 
 TermInfer       ::  { TermInfer }
                 :   var                                             { TermFree $1 }
+                |   nat                                             { TermNat  $1 }
 --                |   '(' TermInfer TermCheck ')'                     { $2 :@: $3 }
                 |   AppLeft OneOrMany(Either(AppType, AppRight))    { foldl
                                                                         (\ l r -> case r of
@@ -176,18 +178,18 @@ fixCheck (TermCheckInf term) context
 
 
 fixInfer :: TermInfer -> [String] -> TermInfer
-fixInfer (TermAnn term type') context
-  = TermAnn (fixCheck term context) type'
-fixInfer (TermBound i n) _
-  = TermBound i n
-fixInfer (TermFree name) context
+fixInfer (TermAnn term tp) context
+  = TermAnn (fixCheck term context) tp
+fixInfer t@(TermNat   _)   _ = t
+fixInfer t@(TermBound i n) _ = t
+fixInfer t@(TermFree name) context
   = case elemIndex name context of
       Just ind -> TermBound ind name
-      Nothing -> TermFree name
+      Nothing  -> t
 fixInfer (TermApp left right) context
   = TermApp (fixInfer left context) (fixCheck right context)
--- fixInfer (LamAnn par type' body) context
---   = LamAnn par type' $ fixInfer body (par : context)
+-- fixInfer (LamAnn par tp body) context
+--   = LamAnn par tp $ fixInfer body (par : context)
 
 
 parseError _ = do
