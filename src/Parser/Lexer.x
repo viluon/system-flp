@@ -8,12 +8,13 @@ import  Parser.Token
 }
 
 
+$czech = [ěščřžďťňýáíéúů]
 $lower = [a-z]
 $upper = [A-Z]
 $digit = [0-9]
 
 
-@variableident      = [$lower $upper]+
+@variableident      = [$lower $upper $czech]+
 
 $space  = [\ \t\f\v]
 

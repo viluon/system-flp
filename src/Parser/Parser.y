@@ -66,7 +66,7 @@ TermInfer       ::  { TermInfer }
                 :   var                                             { TermFree $1 }
                 |   nat                                             { TermNat  $1 }
 --                |   '(' TermInfer TermCheck ')'                     { $2 :@: $3 }
-                |   AppLeft OneOrMany(Either(AppType, AppRight))    { foldl
+                |   TermInfer OneOrMany(Either(AppType, AppRight))    { foldl
                                                                         (\ l r -> case r of
                                                                           { Left  t    -> TermTyApp l t
                                                                           ; Right term -> TermApp l term })
@@ -74,29 +74,16 @@ TermInfer       ::  { TermInfer }
                 |   '(' TermCheck '::' Type ')'                     { TermAnn $2 $4 }
                 |   TermCheck '::' Type                             { TermAnn $1 $3 }
                 -- NOTE: adding parens around removes some conflicts
-                --|   '(' lambda Params '->' TermInfer ')'       { fix $ foldr
+                -- |   '(' lambda Params '->' TermInfer ')'       { fix $ foldr
                 --                                                         (\ (par, type') body -> LamAnn par type' body)
                 --                                                         $5
                 --                                                         $3 }
                 |   '(' typelambda var '.' TermInfer ')'            { TermTyLam $3 $5 }
                 |   '(' TermInfer ')' {- %shift -}                  { $2 }
-
-
-AppLeft         ::  { TermInfer }
-                :   var                                             { TermFree $1 }
-                |   TermCheck '::' Type                             { TermAnn $1 $3 }
-                |   '(' TermCheck '::' Type ')'                     { TermAnn $2 $4 }
-
-                -- |   '(' lambda TypedParams '->' TermInfer ')'       { fix $ foldr
-                --                                                         (\ (par, type') body -> LamAnn par type' body)
-                --                                                         $5
-                --                                                         $3 }
-                |   '(' TermInfer ')' {- %shift -}                  { $2 }
-                |   '(' typelambda var '.' TermInfer ')'            { TermTyLam $3 $5 }
-
 
 AppRight        ::  { TermCheck }
                 :   var                                             { TermCheckInf $ TermFree $1 }
+                |   nat                                             { TermCheckInf $ TermNat  $1 }
                 |   '(' TermCheck '::' Type ')'                     { TermCheckInf $ TermAnn $2 $4 }
                 -- NOTE: adding parens around removes 9 r/r conflict
                 -- |   '(' lambda TypedParams '->' TermInfer ')'       { TermCheckInf $ fix $ foldr
