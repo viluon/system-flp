@@ -3,6 +3,8 @@ module Interpreter (
 ) where
 
 import System.IO ( stdout, hFlush )
+import Data.Either
+
 import Syntax.AST
 import Syntax.Command
 import Eval ( eval )
@@ -15,6 +17,15 @@ checkAndEval term = do
   tp <- typeOf term
   () <- check term tp
   return $ show $ eval [] term
+
+helper expr =
+  case parseExpr expr of
+    Left _     -> error "cmd"
+    Right term -> typeOf term
+
+
+-- >>> helper "(/\\ T. (/\\ T. (\\x -> x) :: T))[Int]"
+-- Right (TyForall "T" (TyFree "T"))
 
 main :: IO ()
 main = go []

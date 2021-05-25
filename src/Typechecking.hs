@@ -11,30 +11,30 @@ import Utils
 
 
 check :: TermCheck -> Type -> Either Error ()
-check (TermCheckLam var body) tp = _h
-check (TermCheckInf term)     tp = _h'
+check (TermCheckLam var body) tp = undefined
+check (TermCheckInf term)     tp = undefined
 
 class HasType a where
-  typeOf :: Context -> a -> Either Error Type
+  typeOf :: a -> Either Error Type
 
 instance HasType TermCheck where
-  typeOf _   (TermCheckLam _ _)  = Left "Cannot infer a type for an unannotated lambda abstraction"
-  typeOf ctx (TermCheckInf term) = typeOf ctx term
+  typeOf (TermCheckLam _ _)  = Left "Cannot infer a type for an unannotated lambda abstraction"
+  typeOf (TermCheckInf term) = typeOf term
+
+-- >>> typeOf ()
 
 instance HasType TermInfer where
-  typeOf _   (TermAnn   _     tp)   = Right tp
-  typeOf _   (TermNat   _)          = Right TyNat
-  typeOf _   (TermFree  name)       = Left $ "Undefined reference to " ++ name
-  typeOf ctx (TermBound n     _)    = maybe (Left "invalid bound reference!") (convert . snd) $ ctx !!? n
-                                    where convert (HasKind _)  = Left "invalid reference to type"
-                                          convert (HasType tp) = Right tp
-  typeOf ctx (TermApp   lam   _)    = typeOf ctx lam >>= \case
-                                        (TyFun _ tp) -> Right tp
-                                        tp           -> Left $ "Type " ++ show tp ++ " is not a function"
-  typeOf ctx (TermTyLam name  body) = do tp <- typeOf ((name, HasKind Star) : ctx) body; pure $ TyForall name tp
-  typeOf ctx (TermTyApp term  targ) = typeOf ctx term >>= \case
-                                        (TyForall name body) -> Right $ typeSubst name targ body
-                                        _                    -> Left ""
+  typeOf (TermAnn   _     tp)   = Right tp
+  typeOf (TermNat   _)          = Right TyNat
+  typeOf (TermFree  name)       = Left $ "Undefined reference to " ++ name
+  typeOf (TermBound n     _)    = error "the impossible happened!"
+  typeOf (TermApp   lam   _)    = typeOf lam >>= \case
+                                    (TyFun _ tp) -> Right tp
+                                    tp           -> Left $ "Type " ++ show tp ++ " is not a function"
+  typeOf (TermTyLam name  body) = do tp <- typeOf body; pure $ TyForall name tp
+  typeOf (TermTyApp term  targ) = typeOf term >>= \case
+                                    (TyForall name body) -> Right $ typeSubst name targ body
+                                    _                    -> Left ""
 
 typeSubst :: Name -> Type -> Type -> Type
 typeSubst nm arg (TyFree   var)    | nm == var = arg
@@ -43,3 +43,5 @@ typeSubst _  _   TyNat                         = TyNat
 typeSubst nm arg (TyFun    a   b)              = TyFun (typeSubst nm arg a) (typeSubst nm arg b)
 typeSubst nm arg (TyForall var tp) | nm /= var = TyForall var (typeSubst nm arg tp)
 typeSubst _  _   t@(TyForall _  _)             = t
+
+
