@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 371fa836df5b1af78b9c833727896d498e40b4b88595ec36badcb275ebf3cf4b
+-- hash: c3ab93d5660a99731c720458baaf0489d24c772aaac971f8540b6a6c99dc9175
 
 name:           system-flp
 version:        0.1.0.0
@@ -37,6 +37,7 @@ library
       Syntax.AST
       Syntax.Command
       Typechecking
+      Utils
       Value
   other-modules:
       Paths_system_flp

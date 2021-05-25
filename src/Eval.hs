@@ -1,15 +1,11 @@
 module Eval (
-  evalInfer
-, evalCheck
+  eval
 ) where
 
+import Utils
 import Syntax.AST
 import qualified Value as Val
 import qualified Data.Map as M
-
-(!!?) :: [a] -> Int -> Maybe a
-xs !!? n | n >= 0 && n < length xs = Just $ xs !! n
-_  !!? _ = Nothing
 
 builtins :: M.Map Name Val.Value
 builtins = M.fromList
@@ -31,6 +27,9 @@ evalInfer env (TermBound   n    name) = case env !!? n of
 evalInfer env (TermApp     e1   e2)   = valueApp (evalInfer env e1) (evalCheck env e2)
 evalInfer env (TermTyLam   name e)    = Val.TyLam name e env
 evalInfer env (TermTyApp   e    tp)   = typeApp (evalInfer env e) tp
+
+eval :: Val.Env -> TermCheck -> Val.Value
+eval = evalCheck
 
 evalCheck :: Val.Env -> TermCheck -> Val.Value
 evalCheck env (TermCheckInf t)      = evalInfer env t

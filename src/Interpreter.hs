@@ -5,14 +5,16 @@ module Interpreter (
 import System.IO ( stdout, hFlush )
 import Syntax.AST
 import Syntax.Command
-import Eval
+import Eval ( eval )
 import Parser.Parser ( parseExpr )
+import Typechecking
+import Utils
 
--- getLine :: RealWorld -> (String, RealWorld)
-
-checkAndEval :: TermCheck -> IO ()
+checkAndEval :: TermCheck -> Either Error String
 checkAndEval term = do
-  print $ evalCheck [] term
+  tp <- typeOf term
+  () <- check term tp
+  return $ show $ eval [] term
 
 main :: IO ()
 main = go []
@@ -25,4 +27,4 @@ main = go []
         Left cmd   -> case cmd of
           Quit        -> pure ()
           Assume ctx' -> go $ ctx ++ ctx'
-        Right term -> checkAndEval term >> go ctx
+        Right term -> putStrLn (either id id $ checkAndEval term) >> go ctx

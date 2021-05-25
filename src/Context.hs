@@ -1,6 +1,6 @@
 module Context (
-  Context(..),
-  Info(..)
+  Context
+, Info(..)
 ) where
 
 import Syntax.AST
