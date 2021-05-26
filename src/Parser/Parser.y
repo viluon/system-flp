@@ -1,12 +1,13 @@
 {
 module Parser.Parser (parseExpr) where
 
-import Data.List (elemIndex)
+import qualified Data.Map as M
 
 import Control.Monad (unless, fail)
 import Control.Monad.State hiding (fix)
 
 import qualified Parser.Token as Tok
+import Parser.Repairable
 import Parser.Lexer
 import Parser.Utils
 
@@ -74,7 +75,7 @@ TermInfer       ::  { TermInfer }
                 |   '(' TermCheck '::' Type ')'                     { TermAnn $2 $4 }
                 |   TermCheck '::' Type                             { TermAnn $1 $3 }
                 -- NOTE: adding parens around removes some conflicts
-                -- |   '(' lambda Params '->' TermInfer ')'       { fix $ foldr
+                -- |   '(' lambda Params '->' TermInfer ')'       { foldr
                 --                                                         (\ (par, type') body -> LamAnn par type' body)
                 --                                                         $5
                 --                                                         $3 }
@@ -86,12 +87,12 @@ AppRight        ::  { TermCheck }
                 |   nat                                             { TermCheckInf $ TermNat  $1 }
                 |   '(' TermCheck '::' Type ')'                     { TermCheckInf $ TermAnn $2 $4 }
                 -- NOTE: adding parens around removes 9 r/r conflict
-                -- |   '(' lambda TypedParams '->' TermInfer ')'       { TermCheckInf $ fix $ foldr
+                -- |   '(' lambda TypedParams '->' TermInfer ')'       { TermCheckInf $ foldr
                 --                                                         (\ (par, type') body -> LamAnn par type' body)
                 --                                                         $5
                 --                                                         $3 }
                 |   '(' TermInfer ')' {- %shift -}                  { TermCheckInf $2 }
-                |   '(' lambda Params '->' TermCheck ')'            { fix $ foldr
+                |   '(' lambda Params '->' TermCheck ')'            { foldr
                                                                         (\ arg body -> TermCheckLam arg body)
                                                                         $5
                                                                         $3 }
@@ -104,7 +105,7 @@ Params          ::  { [String] }
 
 TermCheck       ::  { TermCheck }
                 :   TermInfer                                       { TermCheckInf $1 }
-                |   '(' lambda Params '->' TermCheck ')'            { fix $ foldr
+                |   '(' lambda Params '->' TermCheck ')'            { foldr
                                                                         (\ arg body -> TermCheckLam arg body)
                                                                         $5
                                                                         $3 }
@@ -145,39 +146,6 @@ OneOrMany(tok)
 
 {
 
-class Fix a where
-  fix :: a -> a
-
-
-instance Fix TermCheck where
-  fix lambda = fixCheck lambda []
-
-
-instance Fix TermInfer where
-  fix lambda = fixInfer lambda []
-
-
-fixCheck :: TermCheck -> [String] -> TermCheck
-fixCheck (TermCheckLam par body) context
-  = TermCheckLam par $ fixCheck body (par : context)
-fixCheck (TermCheckInf term) context
-  = TermCheckInf $ fixInfer term context
-
-
-fixInfer :: TermInfer -> [String] -> TermInfer
-fixInfer (TermAnn term tp) context
-  = TermAnn (fixCheck term context) tp
-fixInfer t@(TermNat   _)   _ = t
-fixInfer t@(TermBound i n) _ = t
-fixInfer t@(TermFree name) context
-  = case elemIndex name context of
-      Just ind -> TermBound ind name
-      Nothing  -> t
-fixInfer (TermApp left right) context
-  = TermApp (fixInfer left context) (fixCheck right context)
--- fixInfer (LamAnn par tp body) context
---   = LamAnn par tp $ fixInfer body (par : context)
-
 
 parseError _ = do
   lno   <- getLineNo
@@ -188,5 +156,5 @@ parseError _ = do
 
 parseExpr :: String -> Either Command TermCheck
 parseExpr s =
-  evalP parserAct s
+  repair <$> evalP parserAct s
 }

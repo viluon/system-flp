@@ -4,8 +4,6 @@ module Typechecking (
   check
 , infer
 , desugar
-, typeOf
-, typeSubst
 , builtinTypes
 , desugarTypeSubst
 ) where
@@ -14,6 +12,7 @@ import qualified Data.Map as M
 
 import Syntax.AST
 import Context
+import HasType
 import Utils
 
 
@@ -29,17 +28,18 @@ instance Sweet TermCheck where
   desugar bi (TermCheckInf term)     = TermCheckInf     (desugar bi term)
 
 instance Sweet TermInfer where
-  desugar mt x     | M.empty == mt = x
-  desugar bi (TermAnn   term tp)   = TermAnn term (desugarTypeSubst bi tp)
-  desugar _  n@(TermNat   _)       = n
-  desugar _  v@(TermFree  _)       = v
-  desugar _  v@(TermBound _ _)     = v
-  desugar bi (TermApp   lam  arg)  = TermApp (desugar bi lam) (desugar bi arg)
-  desugar bi (TermTyLam tvar body) = let bi' = if   M.member tvar bi
+  desugar mt x         | M.empty == mt = x
+  desugar bi (TermAnn       term tp)   = TermAnn term (desugarTypeSubst bi tp)
+  desugar _  n@(TermNat     _)         = n
+  desugar _  v@(TermFree    _)         = v
+  desugar _  v@(TermBound   _ _)       = v
+  desugar _  b@(TermBuiltin _)         = b
+  desugar bi (TermApp       lam  arg)  = TermApp (desugar bi lam) (desugar bi arg)
+  desugar bi (TermTyLam     tvar body) = let bi' = if   M.member tvar bi
                                                then M.delete tvar bi
                                                else bi
                                      in TermTyLam tvar (desugar bi' body)
-  desugar bi (TermTyApp tlam targ) = TermTyApp (desugar bi tlam) (desugarTypeSubst bi targ)
+  desugar bi (TermTyApp     tlam targ) = TermTyApp (desugar bi tlam) (desugarTypeSubst bi targ)
 
 desugarTypeSubst :: M.Map Name Type -> Type -> Type
 desugarTypeSubst = flip (foldr (uncurry typeSubst)) . M.toList
@@ -56,8 +56,6 @@ check ctx (TermCheckInf term)     tp = do inferred <- infer ctx term
                                           else
                                             Left $ "Expected " ++ show tp ++ ", got " ++ show inferred
 
--- (\x -> x) :: Nat
-
 isValue :: (a, Info) -> Bool
 isValue (_, HasType _) = True
 isValue _              = False
@@ -65,6 +63,7 @@ isValue _              = False
 infer :: Context -> TermInfer -> Either Error Type
 infer ctx (TermAnn   term  tp)   = check ctx term tp >> pure tp
 infer _   (TermNat   _)          = Right TyNat
+infer _   (TermBuiltin b)        = typeOf b
 infer _   (TermFree  name)       = Left $ "Undefined reference to " ++ show name -- unbound variable, TODO
 infer ctx (TermBound n     name) = case filter isValue ctx !!? n of
                                      Just (_, HasType t) -> Right t
@@ -83,34 +82,3 @@ infer ctx (TermTyApp tlam  targ) = do tp <- infer ctx tlam
                                         TyForall nm innerType -> Right $ typeSubst nm targ innerType
                                         _                     -> Left $
                                           "Expected expression of forall type, got expression of type " ++ show tp
-
-
-class HasType a where
-  typeOf :: a -> Either Error Type
-
-instance HasType TermCheck where
-  typeOf (TermCheckLam _ _)  = Left "Cannot infer a type for an unannotated lambda abstraction"
-  typeOf (TermCheckInf term) = typeOf term
-
--- >>> typeOf ()
-
-instance HasType TermInfer where
-  typeOf (TermAnn   _     tp)   = Right tp
-  typeOf (TermNat   _)          = Right TyNat
-  typeOf (TermFree  name)       = Left $ "Undefined reference to " ++ name
-  typeOf (TermBound n     _)    = error "the impossible happened!"
-  typeOf (TermApp   lam   _)    = typeOf lam >>= \case
-                                    (TyFun _ tp) -> Right tp
-                                    tp           -> Left $ "Type " ++ show tp ++ " is not a function"
-  typeOf (TermTyLam name  body) = do tp <- typeOf body; pure $ TyForall name tp
-  typeOf (TermTyApp term  targ) = typeOf term >>= \case
-                                    (TyForall name body) -> Right $ typeSubst name targ body
-                                    _                    -> Left ""
-
-typeSubst :: Name -> Type -> Type -> Type
-typeSubst nm arg (TyFree   var)    | nm == var = arg
-typeSubst _  _   t@(TyFree _)                  = t
-typeSubst _  _   TyNat                         = TyNat
-typeSubst nm arg (TyFun    a   b)              = TyFun (typeSubst nm arg a) (typeSubst nm arg b)
-typeSubst nm arg (TyForall var tp) | nm /= var = TyForall var (typeSubst nm arg tp)
-typeSubst _  _   t@(TyForall _  _)             = t

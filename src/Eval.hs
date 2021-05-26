@@ -2,16 +2,18 @@ module Eval (
   eval
 ) where
 
-import Utils
-import Syntax.AST
 import qualified Data.Map as M
+import Data.Either
+
+import Syntax.AST
+import HasType
+import Utils
 
 evalInfer :: Env -> TermInfer -> Value
 evalInfer env (TermAnn     e    _)    = evalCheck env e
 evalInfer _   (TermNat     n)         = ValNat n
-evalInfer _   (TermFree    name)      = case builtinOps M.!? name of
-                                        Just builtin -> builtin
-                                        Nothing      -> ValFree name
+evalInfer _   (TermFree    name)      = ValFree name
+evalInfer _   (TermBuiltin b)         = ValBuiltin b
 evalInfer env (TermBound   n    name) = case env !!? n of
                                         Just x  -> x
                                         Nothing -> error $ "undefined reference to " ++ name
@@ -31,7 +33,7 @@ valueApp (ValLam _ body env)     arg  = evalCheck (arg : env) body
 valueApp pap@(ValPap a _ _)      arg1 = case a of
                                          1 -> uncurry builtinApp $ collect (ValPap 0 pap arg1)
                                          _ -> ValPap (a - 1) pap arg1
-valueApp v@(ValBuiltin builtin) arg  = case arity builtin of
+valueApp v@(ValBuiltin builtin) arg  = case arity $ fromRight undefined $ typeOf builtin of
                                          1 -> builtinApp builtin [arg]
                                          a -> ValPap (a - 1) v arg
 valueApp a b                           = ValApp a b
@@ -44,7 +46,7 @@ collect pap@(ValPap 0 _ _) = go pap []
 collect _                   = error "collect only works with partial applications"
 
 builtinApp :: Builtin -> [Value] -> Value
-builtinApp builtin args = case arity builtin of
+builtinApp builtin args = case arity $ fromRight undefined $ typeOf builtin of -- FIXME: ugliness with undefined
   2 -> let [a, b] = args in (binOps M.! builtin) (a, b)
   1 -> let [a]    = args in (unOps  M.! builtin)  a
   _ -> undefined

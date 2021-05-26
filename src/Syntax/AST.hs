@@ -8,6 +8,7 @@ module Syntax.AST
 , Value(..)
 , Env
 , builtinOps
+, builtinOpTypes
 , binOps
 , unOps
 , arity
@@ -61,23 +62,35 @@ data Builtin
   | Negate
   deriving (Eq, Show, Ord)
 
-builtinOps :: M.Map Name Value
+builtinOps :: M.Map Name Builtin
 builtinOps = M.fromList
-             [ ("plus",   ValBuiltin Plus)
-             , ("krát",   ValBuiltin Times)
-             , ("times",  ValBuiltin Times)
-             , ("negate", ValBuiltin Negate)
+             [ ("plus",   Plus)
+             , ("krát",   Times)
+             , ("times",  Times)
+             , ("negate", Negate)
              ]
+
+builtinOpTypes :: M.Map Builtin Type
+builtinOpTypes = M.fromList
+                 [ (Plus,   TyNat ~~> TyNat ~~> TyNat)
+                 , (Times,  TyNat ~~> TyNat ~~> TyNat)
+                 , (Times,  TyNat ~~> TyNat ~~> TyNat)
+                 , (Negate,           TyNat ~~> TyNat)
+                 ]
+           where
+             infixr 5 ~~>
+             (~~>) = TyFun
+
+unOps  :: M.Map Builtin (Value          -> Value)
+unOps  = M.fromList [(Negate, \(ValNat n) -> ValNat $ negate n)]
 
 binOps :: M.Map Builtin ((Value, Value) -> Value)
 binOps = M.fromList
          [ (Plus,  \(ValNat x, ValNat y) -> ValNat $ x + y)
          , (Times, \(ValNat x, ValNat y) -> ValNat $ x * y)
          ]
-unOps  :: M.Map Builtin (Value          -> Value)
-unOps  = M.fromList [(Negate, \(ValNat n) -> ValNat $ negate n)]
 
-arity :: Builtin -> Int
-arity Plus   = 2
-arity Times  = 2
-arity Negate = 1
+arity :: Type -> Int
+arity (TyFun    _ t) = 1 + arity t
+arity (TyForall _ t) = arity t
+arity _              = 0

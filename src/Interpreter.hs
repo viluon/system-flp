@@ -11,6 +11,7 @@ import Context
 import Eval ( eval )
 import Parser.Parser ( parseExpr )
 import Typechecking
+import HasType
 import Utils
 
 {-
