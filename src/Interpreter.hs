@@ -5,6 +5,7 @@ module Interpreter (
 
 import System.IO ( stdout, hFlush )
 import Debug.Trace ( trace )
+import Data.Either
 
 import Syntax.AST
 import Syntax.Command
@@ -14,24 +15,60 @@ import Parser.Parser ( parseExpr )
 import Typechecking
 import Utils
 
+{-
+let x = p in e
+
+(\x -> e) p
+
+-}
+
 checkAndEval :: TermCheck -> Either Error String
 checkAndEval term' = do
   tp' <- typeOf term'
-  let tp = typeSubst "Nat" TyNat tp'
-  -- let term = TermCheckInf $ TermTyApp (TermTyLam "Nat" (TermAnn term' tp)) TyNat
-  let term = term'
+  let tp   = desugarTypeSubst builtinTypes tp'
+  let term = desugar builtinTypes term'
   () <- check [("Nat", HasKind Star)] term tp
   return $ show $ eval [] term
 
+oof = TermCheckInf
+  (TermTyApp
+    intLam
+    TyNat)
+
+intLam = TermTyLam "int"
+  (TermAnn
+    (TermCheckInf
+      (TermAnn
+        (TermCheckInf (TermNat 4))
+        (TyFree "int")))
+    (TyFree "int"))
+
+
+
+-- >>> check [] oof TyNat
+-- Left "Expected TyFree \"int\", got TyNat"
+
+-- >>> infer [] intLam
+-- Left "Expected TyFree \"int\", got TyNat"
+
 helper expr =
   case parseExpr expr of
-    Left _     -> error "cmd"
-    Right term | trace (show term) True -> checkAndEval term
-    _ -> undefined
+    Left  _    -> error "cmd"
+    Right term -> checkAndEval term
+
+
+
+-- /\ g. ((\x -> x) :: T -> T)
+--    type: forall g. T -> T
+
+-- /\ T. (/\ g. ((\x -> x) :: T -> T))
+--    type: forall T. (forall g. T -> T)
+
+-- (/\ T. (/\ g. ((\x -> x) :: T -> T)))[Int]
+--
 
 
 -- >>> helper "(/\\ T. (/\\ g. (\\x -> x) :: T -> T))[Int]"
--- Right "TyLam \"T\" (TermAnn (TermCheckLam \"x\" (TermCheckInf (TermBound 0 \"x\"))) (TyFun (TyFree \"T\") (TyFree \"T\"))) []"
 
 -- >>> helper "(/\\ Nat . (\\x -> x) :: Nat -> Nat)[t]"
 -- Right "Lam \"x\" (TermCheckInf (TermBound 0 \"x\")) []"
