@@ -4,63 +4,54 @@ module Eval (
 
 import Utils
 import Syntax.AST
-import qualified Value as Val
 import qualified Data.Map as M
 
-builtins :: M.Map Name Val.Value
-builtins = M.fromList
-         [ ("plus",   Val.VBuiltin Val.Plus)
-         , ("krát",   Val.VBuiltin Val.Times)
-         , ("times",  Val.VBuiltin Val.Times)
-         , ("negate", Val.VBuiltin Val.Negate)
-         ]
-
-evalInfer :: Val.Env -> TermInfer -> Val.Value
+evalInfer :: Env -> TermInfer -> Value
 evalInfer env (TermAnn     e    _)    = evalCheck env e
-evalInfer _   (TermNat     n)         = Val.Nat n
-evalInfer _   (TermFree    name)      = case builtins M.!? name of
+evalInfer _   (TermNat     n)         = ValNat n
+evalInfer _   (TermFree    name)      = case builtinOps M.!? name of
                                         Just builtin -> builtin
-                                        Nothing      -> Val.Free name
+                                        Nothing      -> ValFree name
 evalInfer env (TermBound   n    name) = case env !!? n of
                                         Just x  -> x
                                         Nothing -> error $ "undefined reference to " ++ name
 evalInfer env (TermApp     e1   e2)   = valueApp (evalInfer env e1) (evalCheck env e2)
-evalInfer env (TermTyLam   name e)    = Val.TyLam name e env
+evalInfer env (TermTyLam   name e)    = ValTyLam name e env
 evalInfer env (TermTyApp   e    tp)   = typeApp (evalInfer env e) tp
 
-eval :: Val.Env -> TermCheck -> Val.Value
+eval :: Env -> TermCheck -> Value
 eval = evalCheck
 
-evalCheck :: Val.Env -> TermCheck -> Val.Value
+evalCheck :: Env -> TermCheck -> Value
 evalCheck env (TermCheckInf t)      = evalInfer env t
-evalCheck env (TermCheckLam name e) = Val.Lam name e env
+evalCheck env (TermCheckLam name e) = ValLam name e env
 
-valueApp :: Val.Value -> Val.Value -> Val.Value
-valueApp (Val.Lam _ body env)     arg  = evalCheck (arg : env) body
-valueApp pap@(Val.Pap a _ _)      arg1 = case a of
-                                         1 -> uncurry builtinApp $ collect (Val.Pap 0 pap arg1)
-                                         _ -> Val.Pap (a - 1) pap arg1
-valueApp v@(Val.VBuiltin builtin) arg  = case Val.arity builtin of
+valueApp :: Value -> Value -> Value
+valueApp (ValLam _ body env)     arg  = evalCheck (arg : env) body
+valueApp pap@(ValPap a _ _)      arg1 = case a of
+                                         1 -> uncurry builtinApp $ collect (ValPap 0 pap arg1)
+                                         _ -> ValPap (a - 1) pap arg1
+valueApp v@(ValBuiltin builtin) arg  = case arity builtin of
                                          1 -> builtinApp builtin [arg]
-                                         a -> Val.Pap (a - 1) v arg
-valueApp a b                           = Val.App a b
+                                         a -> ValPap (a - 1) v arg
+valueApp a b                           = ValApp a b
 
-collect :: Val.Value -> (Val.Builtin, [Val.Value])
-collect pap@(Val.Pap 0 _ _) = go pap []
-  where go (Val.Pap _ (Val.VBuiltin b) x) xs = (b, x:xs)
-        go (Val.Pap _ inner            x) xs = go inner (x:xs)
-        go _                              _  = error "bug in collect"
+collect :: Value -> (Builtin, [Value])
+collect pap@(ValPap 0 _ _) = go pap []
+  where go (ValPap _ (ValBuiltin b) x) xs = (b, x:xs)
+        go (ValPap _ inner          x) xs = go inner (x:xs)
+        go _                           _  = error "bug in collect"
 collect _                   = error "collect only works with partial applications"
 
-builtinApp :: Val.Builtin -> [Val.Value] -> Val.Value
-builtinApp builtin args = case Val.arity builtin of
-  2 -> let [a, b] = args in (Val.binOps M.! builtin) (a, b)
-  1 -> let [a]    = args in (Val.unOps  M.! builtin)  a
+builtinApp :: Builtin -> [Value] -> Value
+builtinApp builtin args = case arity builtin of
+  2 -> let [a, b] = args in (binOps M.! builtin) (a, b)
+  1 -> let [a]    = args in (unOps  M.! builtin)  a
   _ -> undefined
 
-typeApp :: Val.Value -> Type -> Val.Value
-typeApp (Val.TyLam _ body env) _ = evalCheck env (TermCheckInf body)
-typeApp a b                      = Val.TyApp a b
+typeApp :: Value -> Type -> Value
+typeApp (ValTyLam _ body env) _ = evalCheck env (TermCheckInf body)
+typeApp a b                      = ValTyApp a b
 
 
 {-

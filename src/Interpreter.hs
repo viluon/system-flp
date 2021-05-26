@@ -4,8 +4,6 @@ module Interpreter (
 ) where
 
 import System.IO ( stdout, hFlush )
-import Debug.Trace ( trace )
-import Data.Either
 
 import Syntax.AST
 import Syntax.Command
@@ -29,27 +27,6 @@ checkAndEval term' = do
   let term = desugar builtinTypes term'
   () <- check [("Nat", HasKind Star)] term tp
   return $ show $ eval [] term
-
-oof = TermCheckInf
-  (TermTyApp
-    intLam
-    TyNat)
-
-intLam = TermTyLam "int"
-  (TermAnn
-    (TermCheckInf
-      (TermAnn
-        (TermCheckInf (TermNat 4))
-        (TyFree "int")))
-    (TyFree "int"))
-
-
-
--- >>> check [] oof TyNat
--- Left "Expected TyFree \"int\", got TyNat"
-
--- >>> infer [] intLam
--- Left "Expected TyFree \"int\", got TyNat"
 
 helper expr =
   case parseExpr expr of
