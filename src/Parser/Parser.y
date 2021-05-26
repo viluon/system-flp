@@ -11,9 +11,9 @@ import Parser.Repairable
 import Parser.Lexer
 import Parser.Utils
 
+import Typechecking.Context
 import Syntax.Command
 import Syntax.AST
-import Context
 }
 
 

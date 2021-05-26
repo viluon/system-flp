@@ -1,12 +1,12 @@
-module Eval (
+module Evaluation.Eval (
   eval
 ) where
 
 import qualified Data.Map as M
 import Data.Either
 
+import Typechecking.HasType
 import Syntax.AST
-import HasType
 import Utils
 
 evalInfer :: Env -> TermInfer -> Value

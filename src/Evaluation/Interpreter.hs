@@ -1,17 +1,17 @@
-module Interpreter (
+module Evaluation.Interpreter (
   main
 , helper
 ) where
 
 import System.IO ( stdout, hFlush )
 
-import Syntax.AST
-import Syntax.Command
-import Context
-import Eval ( eval )
+import Typechecking.Typechecking
+import Typechecking.HasType
+import Typechecking.Context
+import Evaluation.Eval ( eval )
 import Parser.Parser ( parseExpr )
-import Typechecking
-import HasType
+import Syntax.Command
+import Syntax.AST
 import Utils
 
 {-

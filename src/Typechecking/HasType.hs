@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module HasType
+module Typechecking.HasType
 ( typeOf
 , typeSubst
 ) where

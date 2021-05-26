@@ -1,6 +1,6 @@
 module Main where
 
-import qualified Interpreter
+import qualified Evaluation.Interpreter as Interpreter
 
 main :: IO ()
 main = Interpreter.main

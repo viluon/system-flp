@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Typechecking (
+module Typechecking.Typechecking (
   check
 , infer
 , desugar
@@ -10,9 +10,9 @@ module Typechecking (
 
 import qualified Data.Map as M
 
+import Typechecking.HasType
+import Typechecking.Context
 import Syntax.AST
-import Context
-import HasType
 import Utils
 
 

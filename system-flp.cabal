@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c28955333678fbb14a8c76666b7283fd35925148c269b12ddbac4a516ccba98a
+-- hash: c540b36cb14528887e56b7d2b6fe112a2139be2622614b271280c1bcf9bbe4f6
 
 name:           system-flp
 version:        0.1.0.0
@@ -27,10 +27,8 @@ source-repository head
 
 library
   exposed-modules:
-      Context
-      Eval
-      HasType
-      Interpreter
+      Evaluation.Eval
+      Evaluation.Interpreter
       Parser.Lexer
       Parser.Parser
       Parser.Repairable
@@ -38,7 +36,9 @@ library
       Parser.Utils
       Syntax.AST
       Syntax.Command
-      Typechecking
+      Typechecking.Context
+      Typechecking.HasType
+      Typechecking.Typechecking
       Utils
   other-modules:
       Paths_system_flp

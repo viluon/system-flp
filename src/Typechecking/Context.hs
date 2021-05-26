@@ -1,4 +1,4 @@
-module Context (
+module Typechecking.Context (
   Context
 , Info(..)
 ) where
